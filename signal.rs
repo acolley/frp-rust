@@ -13,7 +13,7 @@ enum Either<L,R> {
     Right(R),
 }
 
-pub fn lift<T: Send + Clone, U: Send + Clone>(sig: &Signal<T>, func: extern fn(T) -> U) -> Signal<U> {
+pub fn lift<T: Send + Clone, U: Send + Clone>(sig: &Signal<T>, func: |T|: 'static + Send -> U) -> Signal<U> {
     let (chan, port) = channel();
     sig.receiver.add(chan);
     let (mchan, mport) = channel();
@@ -30,9 +30,11 @@ pub fn lift<T: Send + Clone, U: Send + Clone>(sig: &Signal<T>, func: extern fn(T
     }
 }
 
-pub fn lift2<T1:Send+Clone,T2:Send+Clone,U:Send+Clone>(sig1: &mut Signal<T1>, sig2: &Signal<T2>, func: extern fn(T1,T2) -> U) -> Signal<U> {
+pub fn lift2<T1: Send + Clone, T2: Send + Clone, U: Send + Clone>(sig1: &mut Signal<T1>, 
+                                                                  sig2: &Signal<T2>, 
+                                                                  func: |T1, T2|: 'static + Send -> U) -> Signal<U> {
     let (chan, port) = channel();
-    let (xchan, xport): (Sender<Either<T1,T2>>, Receiver<Either<T1,T2>>) = channel();
+    let (xchan, xport) = channel::<Either<T1, T2>>();
     let (mchan1, mport1) = channel();
     let (mchan2, mport2) = channel();
     sig1.receiver.add(mchan1);
@@ -92,7 +94,7 @@ pub fn lift2<T1:Send+Clone,T2:Send+Clone,U:Send+Clone>(sig1: &mut Signal<T1>, si
     }
 }
 
-fn constant<T:Clone+Send>(val: T) -> (Sender<()>, Signal<T>) {
+pub fn constant<T:Clone+Send>(val: T) -> (Sender<()>, Signal<T>) {
     let (chan, port) = channel();
     let (mchan, mport) = channel();
     task::spawn(proc() {
